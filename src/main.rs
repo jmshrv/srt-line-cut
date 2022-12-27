@@ -1,8 +1,6 @@
-use std::str;
+use std::{process::Command, str};
 
-use async_process::Command;
 use clap::Parser;
-use futures::StreamExt;
 use itertools::Itertools;
 use srtlib::{ParsingError, Subtitles, Timestamp};
 
@@ -52,12 +50,10 @@ impl FFMpegFormat for Timestamp {
 //     }
 // }
 
-#[tokio::main]
-async fn main() -> Result<(), ParsingError> {
+// Apparently ParsingError contains all the errors we have in the program lol
+fn main() -> Result<(), ParsingError> {
     let args = Args::parse();
     let subs = Subtitles::parse_from_file(args.srt, None)?;
-
-    // let mut ffmpeg_futures = Vec::new();
 
     for sub in subs {
         let matches: Vec<_> = args
@@ -67,31 +63,21 @@ async fn main() -> Result<(), ParsingError> {
             .collect();
 
         if !matches.is_empty() {
-            let command = Command::new("ffmpeg")
+            Command::new("ffmpeg")
                 .args(&["-i", &args.video])
                 .args(&["-ss", &sub.start_time.ffmpeg_format()])
                 .args(&["-to", &sub.end_time.ffmpeg_format()])
                 .args(args.ffmpeg_opts.split(" "))
                 .arg(format!(
-                    "file:{:02}-{:02}-{:02}.{:03}",
-                    &sub.start_time.ffmpeg_format(),
-                    &sub.end_time.ffmpeg_format(),
+                    "{:02}-{:02}-{:02}.{:03}",
+                    &sub.start_time.ffmpeg_format().replace(":", "_"),
+                    &sub.end_time.ffmpeg_format().replace(":", "_"),
                     matches.iter().join(","),
                     &args.output_container
                 ))
-                .output()
-                .await;
-
-            // ffmpeg_futures.push(command);
+                .status()?;
         }
     }
-
-    // let ffmpeg_stream =
-    //     futures::stream::iter(ffmpeg_futures).buffer_unordered(args.ffmpeg_instances);
-
-    // let results = ffmpeg_stream.collect::<Vec<_>>().await;
-
-    // println!("Exported {} segments", results.len());
 
     Ok(())
 }
