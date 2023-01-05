@@ -1,4 +1,4 @@
-use std::{process::Command, str};
+use std::process::Command;
 
 use clap::Parser;
 use itertools::Itertools;
@@ -33,22 +33,12 @@ trait FFMpegFormat {
 impl FFMpegFormat for Timestamp {
     fn ffmpeg_format(&self) -> String {
         let (hours, minutes, seconds, milliseconds) = self.get();
-        format!("{}:{}:{}.{}", hours, minutes, seconds, milliseconds)
+        format!(
+            "{:02}:{:02}:{:02}.{:03}",
+            hours, minutes, seconds, milliseconds
+        )
     }
 }
-
-// trait SecondsBetween {
-//     fn seconds_between(&self, other: &Timestamp) -> usize;
-// }
-
-// impl SecondsBetween for Timestamp {
-//     fn seconds_between(&self, other: &Timestamp) -> usize{
-//         let (self_hours, self_minutes, self_seconds, self_milliseconds) = self.get();
-//         let (other_hours, other_minutes, other_seconds, other_milliseconds) = other.get();
-
-//         self_hours * 3600 + other_hours * 3600 + self_minutes * 60 + other_minutes * 60 + self_seconds + other_seconds + self_milliseconds / 1000 + other_milliseconds / 1000
-//     }
-// }
 
 // Apparently ParsingError contains all the errors we have in the program lol
 fn main() -> Result<(), ParsingError> {
@@ -64,12 +54,13 @@ fn main() -> Result<(), ParsingError> {
 
         if !matches.is_empty() {
             Command::new("ffmpeg")
+                // .args(&["-hwaccel", "videotoolbox"])
                 .args(&["-i", &args.video])
                 .args(&["-ss", &sub.start_time.ffmpeg_format()])
                 .args(&["-to", &sub.end_time.ffmpeg_format()])
                 .args(args.ffmpeg_opts.split(" "))
                 .arg(format!(
-                    "{:02}-{:02}-{:02}.{:03}",
+                    "{}-{}-{}.{}",
                     &sub.start_time.ffmpeg_format().replace(":", "_"),
                     &sub.end_time.ffmpeg_format().replace(":", "_"),
                     matches.iter().join(","),
